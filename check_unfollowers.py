@@ -14,6 +14,11 @@ from typing import Set, Optional
 from bs4 import BeautifulSoup
 
 
+# Constants
+CONTENT_DETECTION_BYTES = 200
+EXCLUDED_DOMAINS = ['instagram.com', 'www.instagram.com']
+
+
 def is_valid_instagram_username(username: str) -> bool:
     """
     Validate Instagram username format.
@@ -140,7 +145,7 @@ def parse_html_file(filepath: str) -> Optional[Set[str]]:
                 parts = href.rstrip('/').split('/')
                 if parts:
                     username = parts[-1]
-                    if username and username not in ['instagram.com', 'www.instagram.com'] and is_valid_instagram_username(username):
+                    if username and username not in EXCLUDED_DOMAINS and is_valid_instagram_username(username):
                         usernames.add(username.lower())
         
         # Also look for text that might contain usernames
@@ -187,15 +192,16 @@ def parse_file(filepath: str) -> Optional[Set[str]]:
         # Try to detect file type by content
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read(200)  # Read more bytes for better detection
+                content = f.read(CONTENT_DETECTION_BYTES)
                 content_stripped = content.strip()
+                content_lower = content.lower()
                 
                 # Check for JSON format
                 if content_stripped.startswith(('{', '[')):
                     return parse_json_file(filepath)
                 # Check for HTML format (more specific patterns)
                 elif content_stripped.startswith(('<!DOCTYPE', '<html', '<HTML')) or \
-                     ('<html>' in content.lower() or '<!doctype html>' in content.lower()):
+                     ('<html>' in content_lower or '<!doctype html>' in content_lower):
                     return parse_html_file(filepath)
         except Exception:
             pass
