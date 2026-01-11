@@ -17,7 +17,6 @@ from bs4 import BeautifulSoup
 
 # Constants
 CONTENT_DETECTION_BYTES = 200
-EXCLUDED_DOMAINS = ['instagram.com', 'www.instagram.com']
 
 
 def is_valid_instagram_username(username: str) -> bool:
@@ -169,7 +168,7 @@ def parse_html_file(filepath: str) -> Optional[Set[str]]:
                 if username and is_valid_instagram_username(username):
                     usernames.add(username.lower())
         
-        return usernames if usernames else None
+        return usernames
     except FileNotFoundError:
         print(f"Error: File {filepath} not found", file=sys.stderr)
         return None
