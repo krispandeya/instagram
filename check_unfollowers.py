@@ -11,6 +11,7 @@ import sys
 import os
 import re
 from typing import Set, Optional
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 
@@ -140,13 +141,23 @@ def parse_html_file(filepath: str) -> Optional[Set[str]]:
         # Look for Instagram username patterns in links
         for link in soup.find_all('a'):
             href = link.get('href', '')
-            # Instagram profile links typically: https://www.instagram.com/username
-            if 'instagram.com/' in href:
-                parts = href.rstrip('/').split('/')
-                if parts:
-                    username = parts[-1]
-                    if username and username not in EXCLUDED_DOMAINS and is_valid_instagram_username(username):
-                        usernames.add(username.lower())
+            if not href:
+                continue
+            
+            # Properly parse and validate Instagram profile links
+            try:
+                parsed = urlparse(href)
+                # Check if it's a legitimate Instagram domain
+                if parsed.netloc in ['www.instagram.com', 'instagram.com']:
+                    # Extract username from path
+                    path = parsed.path.strip('/').split('/')
+                    if path and path[0]:
+                        username = path[0]
+                        if is_valid_instagram_username(username):
+                            usernames.add(username.lower())
+            except Exception:
+                # Skip malformed URLs
+                continue
         
         # Also look for text that might contain usernames
         # Instagram usernames are often in specific tags or classes
