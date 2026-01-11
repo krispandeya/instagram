@@ -9,8 +9,35 @@ It accepts HTML or JSON files containing Instagram followers and following data.
 import json
 import sys
 import os
+import re
 from typing import Set, Optional
 from bs4 import BeautifulSoup
+
+
+def is_valid_instagram_username(username: str) -> bool:
+    """
+    Validate Instagram username format.
+    
+    Instagram usernames must:
+    - Be 1-30 characters long
+    - Contain only alphanumeric characters, dots, and underscores
+    - Not end with a dot
+    
+    Args:
+        username: Username to validate
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    if not username or len(username) > 30:
+        return False
+    # Instagram username pattern: alphanumeric, dots, underscores, not ending with dot
+    pattern = r'^[a-zA-Z0-9._]+$'
+    if not re.match(pattern, username):
+        return False
+    if username.endswith('.'):
+        return False
+    return True
 
 
 def parse_json_file(filepath: str) -> Optional[Set[str]]:
@@ -113,17 +140,17 @@ def parse_html_file(filepath: str) -> Optional[Set[str]]:
                 parts = href.rstrip('/').split('/')
                 if parts:
                     username = parts[-1]
-                    if username and username not in ['instagram.com', 'www.instagram.com']:
+                    if username and username not in ['instagram.com', 'www.instagram.com'] and is_valid_instagram_username(username):
                         usernames.add(username.lower())
         
         # Also look for text that might contain usernames
         # Instagram usernames are often in specific tags or classes
         for element in soup.find_all(['span', 'div', 'p']):
             text = element.get_text().strip()
-            # Basic username validation (alphanumeric, dots, underscores)
+            # Validate username format (alphanumeric, dots, underscores)
             if text and text.startswith('@'):
                 username = text[1:].strip()
-                if username:
+                if username and is_valid_instagram_username(username):
                     usernames.add(username.lower())
         
         return usernames if usernames else None
@@ -160,10 +187,15 @@ def parse_file(filepath: str) -> Optional[Set[str]]:
         # Try to detect file type by content
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read(100)
-                if content.strip().startswith('{') or content.strip().startswith('['):
+                content = f.read(200)  # Read more bytes for better detection
+                content_stripped = content.strip()
+                
+                # Check for JSON format
+                if content_stripped.startswith(('{', '[')):
                     return parse_json_file(filepath)
-                elif '<' in content:
+                # Check for HTML format (more specific patterns)
+                elif content_stripped.startswith(('<!DOCTYPE', '<html', '<HTML')) or \
+                     ('<html>' in content.lower() or '<!doctype html>' in content.lower()):
                     return parse_html_file(filepath)
         except Exception:
             pass
